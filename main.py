@@ -62,20 +62,20 @@ def pressKeyF1(event):
 mainForm = tk.Tk()
 mainForm.title("Калькулятор")
 mainForm.iconbitmap(f"{getcwd()}\calculator.ico")
-mainForm.geometry("518x507")
+mainForm.geometry("519x507")
 mainForm['bg'] = 'black'
 mainForm.bind('<Key>', pressKey)
 mainForm.bind('<F1>', pressKeyF1)
 mainForm.resizable(0, 0)
 ttk.Style().configure('TButton', background="white", foreground="black", font=('Arial', 16))
 calc = tk.Label(mainForm, text='0', anchor='e', font=('Arial', 14))
-calc.place(width=508, height=40, x=8)
-[ttk.Button(text=str(i), command=lambda i=i: addDigit(str(i))).place(x=109+((i-1)%3)*102, y=350-((i-1)//3)*77, width=101, height=75) for i in range(1, 10)]
+calc.place(width=509, height=40, x=5)
+[ttk.Button(text=str(i), command=lambda i=i: addDigit(str(i))).place(x=107+((i-1)%3)*102, y=350-((i-1)//3)*77, width=101, height=75) for i in range(1, 10)]
 dict1, list2, list3, list4 = {'±': 'changeSign()', '0': 'addDigit(\'0\')', ',': 'addComma()', '=': 'calculate()'}, ['+', '-', '×', '÷'], ['x^y', '√x', '%'], ['C', '←']
-memlist = ['MS', 'M+', 'M-', 'MR', 'MS', 'MC']
-[ttk.Button(text=name).place(x=2, y=427 - memlist.index(name)*76, width=101, height=75) for name in memlist]
-[ttk.Button(text=i, command=lambda i=i: eval(dict1[i])).place(x=109+102*list(dict1).index(i), y=427, width=101, height=75) for i in dict1]
-[ttk.Button(text=i, command=lambda i=i: addOperation(i)).place(x=415, y=350-77*list2.index(i), width=101, height=75) for i in list2]
-[ttk.Button(text=i, command=lambda i=i: addOperation(i)).place(x=109+102*list3.index(i), y=119, width=101, height=75) for i in list3]
-[ttk.Button(text=i, command=lambda i=i: clear(i)).place(x=109+205*list4.index(i), y=42, width=202, height=75) for i in list4]
+memlist = ['MS', 'M+', 'M-', 'MR', 'MC']
+[ttk.Button(text=name).place(x=5, y=427 - memlist.index(name)*77, width=101, height=75) for name in memlist]
+[ttk.Button(text=i, command=lambda i=i: eval(dict1[i])).place(x=107+102*list(dict1).index(i), y=427, width=101, height=75) for i in dict1]
+[ttk.Button(text=i, command=lambda i=i: addOperation(i)).place(x=413, y=350-77*list2.index(i), width=101, height=75) for i in list2]
+[ttk.Button(text=i, command=lambda i=i: addOperation(i)).place(x=107+102*list3.index(i), y=119, width=101, height=75) for i in list3]
+[ttk.Button(text=i, command=lambda i=i: clear(i)).place(x=107+205*list4.index(i), y=42, width=202, height=75) for i in list4]
 mainForm.mainloop()
