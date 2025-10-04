@@ -16,8 +16,6 @@ def mult(a, b):
 
 def div(a, b):
     """Деление"""
-    if b == 0:
-        raise ValueError("Деление на ноль невозможно")
     return a / b
 
 def modul(a, b):
@@ -50,13 +48,14 @@ def ceil(x):
     """Округение вверх"""
     return math.ceil(x)
 
-def memory_clear():
+def memory_clear(value):
     """Очистка памяти (MC)"""
     global memory
     memory = 0
 
-def memory_recall():
+def memory_recall(value):
     """Чтение значения из памяти (MR)"""
+    global memory
     return memory
 
 def memory_add(value):
@@ -73,3 +72,4 @@ def memory_store(value):
     """Сохраняение значение в память (MS)"""
     global memory
     memory = value
+    print(memory)
