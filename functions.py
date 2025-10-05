@@ -15,13 +15,11 @@ def mult(a, b):
     return a * b
 
 def div(a, b):
-    """Деление"""
+    """Деление (исключение ловится в интерфейсе)"""
     return a / b
 
 def modul(a, b):
-    """Остаток от деления"""
-    if b == 0:
-        raise ValueError("Деление на ноль невозможно")
+    """Остаток от деления (исключение ловится в интерфейсе)"""
     return a % b
 
 def sin(x):
@@ -72,4 +70,3 @@ def memory_store(value):
     """Сохраняение значение в память (MS)"""
     global memory
     memory = value
-    print(memory)
