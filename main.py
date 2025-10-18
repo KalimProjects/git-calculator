@@ -168,7 +168,7 @@ class Calculator:
         if value in self.messsage_errors:
             value = "0"
             
-        if value[-1] in "-+*/.":
+        if value[-1] in "-+×÷*/%.":
             value = value[:-1]
         
         if self.first_number and self.cur_oper and not self.num2_waiting:
