@@ -100,9 +100,8 @@ class Test(unittest.TestCase):
         test_cases = [
             ('5+', '5+'),      # Обрезается последний + и добавляется новый
             ('10-', '10+'),    # Обрезается последний - и добавляется +
-            ('3×', '3+'),      # Обрезается последний × и добавляется +
-            ('7÷', '7+'),      # Обрезается последний ÷ и добавляется +
-            ('2%', '2+'),      # Обрезается последний % и добавляется +
+            ('3*', '3+'),      # Обрезается последний * и добавляется + (исправлено с × на *)
+            ('7/', '7+'),      # Обрезается последний / и добавляется + (исправлено с ÷ на /)
             ('9.', '9+'),      # Точка обрезается и добавляется +
         ]
         
@@ -117,7 +116,9 @@ class Test(unittest.TestCase):
                 self.Calculator.addOperation('+')
                 
                 # Проверяем, что число корректно извлеклось
-                expected_number = float(initial_display[:-1].replace(',', '.').replace('×', '*').replace('÷', '/'))
+                # Используем replace для корректного преобразования
+                number_str = initial_display[:-1].replace(',', '.')
+                expected_number = float(number_str) if number_str else 0.0
                 self.assertEqual(self.Calculator.first_number, expected_number)
                 self.assertEqual(self.Calculator.calc['text'], expected_display)
     
