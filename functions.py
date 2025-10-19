@@ -24,11 +24,11 @@ def modul(a, b):
 
 def sin(x):
     """Синус"""
-    return math.sin(x)
+    return math.sin(math.radians(x))
 
 def cos(x):
     """Косинус"""
-    return math.cos(x)
+    return math.cos(math.radians(x))
 
 def power(a, b):
     """Степень"""
