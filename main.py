@@ -150,15 +150,16 @@ class Calculator:
         """Добавление цифры"""
         value = self.calc['text']
         if (
-                value[0] == '0' and len(value) == 1
+                value == '0'
                 or
                 value in self.messsage_errors
-                or
-                self.num2_waiting
         ):
             value = ""
+        
+        # Не сбрасываем строку при num2_waiting, а добавляем к существующей
+        if self.num2_waiting:
             self.num2_waiting = False
-            
+                
         self.calc['text'] = value + digit
 
     def addOperation(self, operation):
@@ -167,56 +168,83 @@ class Calculator:
 
         if value in self.messsage_errors:
             value = "0"
-            
-        if value[-1] in "-+*/.":
+        
+        # Если последний символ - оператор, заменяем его
+        if value and value[-1] in "-+×÷*/%^":
             value = value[:-1]
         
         if self.first_number and self.cur_oper and not self.num2_waiting:
             self.calculate()
             value = self.calc['text'].replace(',', '.')
 
-        operation = {
+        operation_internal = {
             '+': '+',
             '-': '-',
             '×': '*',
             '÷': '÷',
-            'x^y': '^',
+            'x^y': '^',  # Оставляем ^ для отображения
             '√x': 'sqrt',
             '%': '%'
         }[operation]
 
-        if operation == 'sqrt':
+        if operation_internal == 'sqrt':
             try:
                 digit = float(value)
                 result = digit ** 0.5 if digit >= 0 else None
-                self.calc['text'] = str(result).replace('.', ',') if result else self.messsage_errors[1]
+                self.calc['text'] = self.format_number(result) if result else self.messsage_errors[1]
             except:
                 self.calc['text'] = "Ошибка при вычислении корня!"
-
             return
         
         self.first_number = float(value) if value else 0
-        self.cur_oper = operation
+        self.cur_oper = operation_internal
         self.num2_waiting = True
 
-        if operation != 'x^y':
-            self.calc['text'] = str(value).replace('.', ',') + operation
+        # Всегда показываем оператор (включая ^ для степени)
+        display_value = self.format_number(float(value)) if value else '0'
+        self.calc['text'] = display_value + self.cur_oper
 
     def calculate(self):
         """Вычисление результата"""
-        if not self.first_number or not self.cur_oper:
+        if not self.cur_oper:
             return
 
-        second_value = self.calc['text'].replace(',','.')
-
-        if any(oper in second_value for oper in '+-*/%'):
-            parts = re.split(r'[+\-*/%]?', second_value)
-            second_value = parts[1] if len(parts) > 1 else 0
+        full_expression = self.calc['text'].replace(',', '.')
         
-        if not second_value or second_value in '+-*/%':
-            second_value = "0"
-
-        second_number = float(second_value)
+        # Находим позицию оператора
+        operator_pos = -1
+        for i, char in enumerate(full_expression):
+            if char in '+-×÷*/%^':
+                # Проверяем, что это не унарный минус
+                if char == '-' and (i == 0 or full_expression[i-1] in '+-×÷*/%^'):
+                    continue  # Это унарный минус, пропускаем
+                operator_pos = i
+                break
+        
+        if operator_pos != -1:
+            # Извлекаем второе число (всё что после оператора)
+            second_value = full_expression[operator_pos + 1:]
+            # Первое число - всё до оператора
+            try:
+                actual_first_number = float(full_expression[:operator_pos])
+            except ValueError:
+                actual_first_number = self.first_number
+        else:
+            # Если оператора нет, используем сохранённое first_number
+            second_value = full_expression
+            actual_first_number = self.first_number
+        
+        # Обновляем first_number на актуальное значение из выражения
+        self.first_number = actual_first_number
+        
+        # Обрабатываем второе число
+        if not second_value or second_value in '+-×÷*/%^':
+            second_number = 0
+        else:
+            try:
+                second_number = float(second_value)
+            except ValueError:
+                second_number = 0
 
         op_funcs = {
             '+': functions.add,
@@ -231,9 +259,18 @@ class Calculator:
             self.calc['text'] = self.messsage_errors[0]
         else:
             result = op_funcs[self.cur_oper](self.first_number, second_number) if self.cur_oper in op_funcs else self.first_number
-            self.calc['text'] = str(result) if isinstance(result, int) else str(result).replace('.', ',')
+            self.calc['text'] = self.format_number(result)
 
         self.reset_calculator()
+
+    def format_number(self, num):
+        """Форматирование числа: целые числа без запятой, вещественные с запятой"""
+        if num is None:
+            return "0"
+        if isinstance(num, int) or num.is_integer():
+            return str(int(num))
+        else:
+            return str(num).replace('.', ',')
 
     def reset_calculator(self):
         """Сброс состояния калькулятора"""
@@ -247,25 +284,52 @@ class Calculator:
         if (
                 operation == 'C' 
                 or 
-                len(text) in (1, 2)
-                and
-                text[0] == '-'
+                len(text) in (1, 2) and text[0] == '-'
                 or 
                 text in self.messsage_errors
         ):
             self.calc['text'] = '0'
             self.reset_calculator()
-            
         else:
             self.calc['text'] = text = text[:-1]
-
             if not text or text[-1] not in '+-*/%':
                 self.num2_waiting = False
 
     def changeSign(self):
-        """Изменение знака"""
-        if self.calc['text'] not in self.messsage_errors:
-            self.calc['text'] = self.calc['text'][1:] if self.calc['text'].startswith('-') else '-' + self.calc['text']
+        """Изменение знака последнего числа в строке"""
+        if self.calc['text'] in self.messsage_errors:
+            return
+            
+        text = self.calc['text']
+        
+        # Ищем позицию начала последнего числа
+        # Игнорируем операторы, но учитываем унарный минус
+        operators = '+-×÷*/%^'
+        i = len(text) - 1
+        while i >= 0:
+            if text[i] in operators:
+                # Проверяем, это бинарный оператор или унарный минус
+                if text[i] == '-' and (i == 0 or text[i-1] in operators):
+                    i -= 1  # Это унарный минус, продолжаем поиск
+                    continue
+                break
+            i -= 1
+        
+        # i теперь указывает на позицию перед последним числом (или -1 если нет операторов)
+        start_pos = i + 1
+        last_number = text[start_pos:]
+        
+        if not last_number:
+            return
+            
+        # Переключаем знак
+        if last_number.startswith('-'):
+            new_last_number = last_number[1:]  # Убираем минус
+        else:
+            new_last_number = '-' + last_number  # Добавляем минус
+        
+        # Собираем новую строку
+        self.calc['text'] = text[:start_pos] + new_last_number
 
     def addComma(self):
         """Добавление запятой"""
@@ -280,17 +344,15 @@ class Calculator:
             result = functions.memory_recall(0)
         else:
             digit = float(self.calc['text'].replace(',', '.'))
-
             func = {
                 'sin': functions.sin,
                 'cos': functions.cos,
                 'floor': functions.floor,
                 'ceil': functions.ceil
             }
-
             result = func[signal](digit) if signal in func else digit
 
-        self.calc['text'] = str(result).replace('.', ',')
+        self.calc['text'] = self.format_number(result)
 
     def create_memory_button(self, command):
         """Создание кнопок памяти"""
@@ -299,21 +361,44 @@ class Calculator:
         if value_text in self.messsage_errors:
             value = 0
         else:
-            if any(op in value_text for op in ('+', '-', '×', '÷', '%')):
-                parts = re.split(r'[+\-×÷%]', value_text)
-                value_text = parts[-1] if parts else "0"
-
-            value_text = value_text.replace(',', '.')
-            value = float(value_text) if value_text else 0
+            # Находим последнее число в выражении (учитывая унарный минус)
+            full_expression = value_text.replace(',', '.')
+            
+            # Ищем позицию последнего оператора чтобы извлечь последнее число
+            operator_pos = -1
+            for i, char in enumerate(full_expression):
+                if char in '+-×÷*/%^':
+                    # Проверяем, что это не унарный минус
+                    if char == '-' and (i == 0 or full_expression[i-1] in '+-×÷*/%^'):
+                        continue  # Это унарный минус, пропускаем
+                    operator_pos = i
+            
+            if operator_pos != -1:
+                # Берём последнее число (после последнего оператора)
+                number_str = full_expression[operator_pos + 1:]
+            else:
+                # Если операторов нет, берём всю строку
+                number_str = full_expression
+            
+            # Преобразуем в число
+            try:
+                value = float(number_str) if number_str else 0
+            except ValueError:
+                value = 0
 
         command(value)
 
     def pressKey(self, event):
         """Обработка нажатий клавиш"""
+
+        if not event.char:
+            return
+
         if event.char.isdigit():
             self.addDigit(event.char)
         elif event.char in '-+*/':
-            self.addOperation(event.char)
+            operation = {'*':'×', '/':'÷'}.get(key=event.char, default=event.char)
+            self.addOperation(operation)
         elif event.char == ',':
             self.addComma()
         elif event.char == '=' or event.keysym == 'Return':
