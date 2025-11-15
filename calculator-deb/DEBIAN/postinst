@@ -1,0 +1,40 @@
+#!/bin/bash
+# Более аккуратный патчинг через Python
+set -e
+
+MAIN_PY="/opt/calculator/main.py"
+PATCH_FILE="/tmp/fix_patch.py"
+
+# Создаем Python скрипт для патчинга
+cat > "$PATCH_FILE" << 'PYTHON_PATCH'
+import re
+
+with open('/opt/calculator/main.py', 'r') as f:
+    content = f.read()
+
+# Заменяем проблемную строку на исправленный код
+old_code = '''        self.FormMain.iconbitmap(default=os.path.join(self.application_path, 'icon.ico'))'''
+
+new_code = '''        # Исправлено для Linux
+        try:
+            icon_path = os.path.join(self.application_path, 'icon.png')
+            if os.path.exists(icon_path):
+                img = tk.PhotoImage(file=icon_path)
+                self.FormMain.iconphoto(True, img)
+            else:
+                icon_ico_path = os.path.join(self.application_path, 'icon.ico')
+                if os.path.exists(icon_ico_path):
+                    self.FormMain.iconbitmap(icon_ico_path)
+        except Exception as e:
+            print("Ошибка загрузки иконки:", e)'''
+
+content = content.replace(old_code, new_code)
+
+with open('/opt/calculator/main.py', 'w') as f:
+    f.write(content)
+
+print("Код успешно исправлен")
+PYTHON_PATCH
+
+python3 "$PATCH_FILE"
+rm "$PATCH_FILE"

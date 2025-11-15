@@ -1,0 +1,3 @@
+#!/bin/bash
+cd /opt/calculator
+python3 main.py
