@@ -1,10 +1,11 @@
 [Desktop Entry]
 Version=1.2
 Type=Application
-Name=Calculator
-Comment=Scientific Calculator
+Name=Git-Calculator
+Comment=Simple calculator with advanced functions
 Exec=/usr/local/bin/calculator
-Icon=calculator
+Icon=/opt/calculator/icon.png
 Categories=Utility;Calculator;
 Terminal=false
 StartupNotify=true
+Keywords=calculator;science;math;

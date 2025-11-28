@@ -3,7 +3,7 @@ Version: 1.2
 Section: utils
 Priority: optional
 Architecture: all
-Depends: python3, python3-tk
+Depends: python3, python3-tk | python3-tkinter
 Maintainer: Kalimulin B.A. and Gnedoy M.S.
 Description: Scientific calculator with advanced functions
  A feature-rich calculator with trigonometric functions,

@@ -32,7 +32,7 @@ def build_calculator():
         return
 
     shutil.move(str(exe_source), str(exe_dest))
-    print("EXE-файл перемещён в installer_creation/")
+    print("EXE-файл перемещён в installer_creation_windows/")
         
     # 3. Inno Setup
     print("Сборка установщика с Inno Setup...")
