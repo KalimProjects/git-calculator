@@ -102,15 +102,38 @@ build_linux_package:
   only:
     - releases
 
-# Windows сборка (требуется настройка Windows Runner)
+# Windows сборка
 build_windows_installer:
   stage: build
   tags:
     - windows
+  before_script:
+    # На Windows Shared Runners уже установлены:
+    # - Python
+    # - Chocolatey
+    # Нужно доустановить только необходимое
+    - choco install innosetup -y
+    - pip install pyinstaller
   script:
-    - echo "Windows installer build skipped - no Windows runner available"
-    - echo "Download files manually and run ci_script.bat on Windows machine"
-  when: manual
-  allow_failure: true
+    - echo "Building Windows installer on GitLab Windows Shared Runner..."
+    
+    # Скачиваем файлы
+    - curl -s -L -o main.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/main.py"
+    - curl -s -L -o functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/functions.py" 
+    - curl -s -L -o icon.ico "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/icon.ico"
+    
+    # Скачиваем скрипт установщика
+    - curl -s -L -o installer.iss "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/installer_creation/installer.iss"
+    
+    # Сборка
+    - pyinstaller --onefile --windowed --icon="icon.ico" main.py functions.py
+    - iscc installer.iss
+    
+    # Копируем результат
+    - copy "installer\GitCalculatorSetup.exe" "GitCalculatorSetup_1.2.exe"
+  artifacts:
+    paths:
+      - GitCalculatorSetup_*.exe
+    expire_in: 1 hour
   only:
     - releases
