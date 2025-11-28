@@ -24,13 +24,8 @@ test_application:
     - curl -s -L -o tests/test_functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/test/tests/test_functions.py"
     - echo "# Init file" > tests/__init__.py
     - echo "Running unit tests..."
-    - |
-      for test_file in tests/test_*.py; do
-        if [ -f "$test_file" ]; then
-          echo "Running $test_file..."
-          python "$test_file" || exit 1
-        fi
-      done
+    - python tests/test_calc.py
+    - python tests/test_functions.py
   artifacts:
     paths:
       - main.py
@@ -67,12 +62,9 @@ build_linux_package:
     - cp DEBIAN/postinst package/DEBIAN/
     - cp main.py functions.py icon.png package/opt/calculator/
     - cp calculator.desktop package/usr/share/applications/
-    - |
-      cat > package/usr/local/bin/calculator << 'EOF'
-      #!/bin/bash
-      cd /opt/calculator
-      python3 main.py
-      EOF
+    - echo "#!/bin/bash" > package/usr/local/bin/calculator
+    - echo "cd /opt/calculator" >> package/usr/local/bin/calculator
+    - echo "python3 main.py" >> package/usr/local/bin/calculator
     - chmod +x package/usr/local/bin/calculator
     - chmod -R 755 package/opt/calculator
     - chmod 755 package/DEBIAN/postinst
@@ -103,12 +95,9 @@ build_windows_installer:
     - curl -s -L -o icon.ico "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/icon.ico"
     - curl -s -L -o installer.iss "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/installer_creation/installer.iss"
     - echo "Fixing paths in installer script..."
-    - |
-      $content = Get-Content -Path "installer.iss" -Encoding UTF8
-      $content = $content -replace '#define OutputDir "\.\.\\installer"', '#define OutputDir "installer"'
-      $content = $content -replace '#define IconNameSource "\.\.\\icon\.ico"', '#define IconNameSource "icon.ico"'
-      $content = $content -replace 'Source: "{[^}]*}"', 'Source: "dist\main.exe"; DestName: "GitCalculator.exe"'
-      $content | Set-Content -Path "installer.iss" -Encoding UTF8
+    - '((Get-Content -Path "installer.iss" -Raw) -replace ''#define OutputDir \"\.\.\\installer\"'', ''#define OutputDir \"installer\"'') | Set-Content -Path "installer.iss"'
+    - '((Get-Content -Path "installer.iss" -Raw) -replace ''#define IconNameSource \"\.\.\\icon\.ico\"'', ''#define IconNameSource \"icon.ico\"'') | Set-Content -Path "installer.iss"'
+    - '((Get-Content -Path "installer.iss" -Raw) -replace ''Source: \"\{[^\}]*\}"'', ''Source: \"dist\\main.exe\"; DestName: \"GitCalculator.exe\"'') | Set-Content -Path "installer.iss"'
     - echo "Building with PyInstaller..."
     - pyinstaller --onefile --windowed --icon="icon.ico" --add-data="icon.ico;." main.py functions.py
     - echo "Creating installer with Inno Setup..."
@@ -118,7 +107,7 @@ build_windows_installer:
     paths:
       - GitCalculatorSetup_*.exe
       - installer/
-    expire_in: 1 hour
+    expire_in: 1 week
   only:
     - releases
 
