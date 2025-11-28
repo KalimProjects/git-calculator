@@ -1,0 +1,116 @@
+stages:
+  - test
+  - build
+
+variables:
+  PROJECT_NAME: "git-calculator"
+  VERSION: "1.2"
+
+# Тестирование
+test_application:
+  stage: test
+  image: python:3.9
+  before_script:
+    - apt-get update && apt-get install -y curl
+    - python --version
+  script:
+    - echo "Downloading source code from releases branch..."
+    - curl -s -L -o main.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/main.py"
+    - curl -s -L -o functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/functions.py"
+    - curl -s -L -o icon.ico "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/icon.ico"
+    
+    - echo "Downloading tests from test branch..."
+    - mkdir -p tests
+    - curl -s -L -o tests/test_calc.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/test/tests/test_calc.py"
+    - curl -s -L -o tests/test_functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/test/tests/test_functions.py"
+    - echo "# Init file" > tests/__init__.py
+    
+    - echo "Running unit tests..."
+    - |
+      for test_file in tests/test_*.py; do
+        if [ -f "$test_file" ]; then
+          echo "Running $test_file..."
+          python "$test_file" || exit 1
+        fi
+      done
+  artifacts:
+    paths:
+      - main.py
+      - functions.py
+      - icon.ico
+      - tests/
+    expire_in: 1 hour
+  only:
+    - main
+    - releases
+
+# Сборка Debian пакета (будет работать на Shared Runners)
+build_linux_package:
+  stage: build
+  image: ubuntu:20.04
+  before_script:
+    - apt-get update
+    - apt-get install -y curl dpkg-dev python3
+  script:
+    - echo "Building Debian package..."
+    
+    # Скачиваем файлы
+    - curl -s -L -o main.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/main.py"
+    - curl -s -L -o functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/functions.py"
+    - curl -s -L -o icon.png "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/icon.png"
+    - curl -s -L -o calculator.desktop "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/calculator.desktop"
+    
+    # Скачиваем DEBIAN файлы
+    - mkdir -p DEBIAN
+    - curl -s -L -o DEBIAN/control "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/installer_creation_linux_debian/DEBIAN/control"
+    - curl -s -L -o DEBIAN/postinst "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/installer_creation_linux_debian/DEBIAN/postinst"
+    - chmod +x DEBIAN/postinst
+    
+    # Создаем структуру пакета (упрощённо)
+    - mkdir -p package/DEBIAN
+    - mkdir -p package/opt/calculator
+    - mkdir -p package/usr/local/bin
+    - mkdir -p package/usr/share/applications
+    
+    # Копируем файлы
+    - cp DEBIAN/control package/DEBIAN/
+    - cp DEBIAN/postinst package/DEBIAN/
+    - cp main.py functions.py icon.png package/opt/calculator/
+    - cp calculator.desktop package/usr/share/applications/
+    
+    # Создаем запускаемый скрипт
+    - |
+      cat > package/usr/local/bin/calculator << 'EOF'
+      #!/bin/bash
+      cd /opt/calculator
+      python3 main.py
+      EOF
+    - chmod +x package/usr/local/bin/calculator
+    
+    # Устанавливаем права
+    - chmod -R 755 package/opt/calculator
+    - chmod 755 package/DEBIAN/postinst
+    
+    # Собираем пакет
+    - dpkg-deb --build package calculator_${VERSION}_all.deb
+    
+    - echo "Debian package created: calculator_${VERSION}_all.deb"
+  artifacts:
+    paths:
+      - calculator_*.deb
+    expire_in: 1 week
+  only:
+    - releases
+
+# Windows сборка (требуется настройка Windows Runner)
+build_windows_installer:
+  stage: build
+  tags:
+    - windows
+  script:
+    - echo "Windows installer build skipped - no Windows runner available"
+    - echo "Download files manually and run ci_script.bat on Windows machine"
+  when: manual
+  allow_failure: true
+  only:
+    - releases
