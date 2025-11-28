@@ -18,13 +18,11 @@ test_application:
     - curl -s -L -o main.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/main.py"
     - curl -s -L -o functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/functions.py"
     - curl -s -L -o icon.ico "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/icon.ico"
-    
     - echo "Downloading tests from test branch..."
     - mkdir -p tests
     - curl -s -L -o tests/test_calc.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/test/tests/test_calc.py"
     - curl -s -L -o tests/test_functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/test/tests/test_functions.py"
     - echo "# Init file" > tests/__init__.py
-    
     - echo "Running unit tests..."
     - |
       for test_file in tests/test_*.py; do
@@ -44,7 +42,7 @@ test_application:
     - main
     - releases
 
-# Сборка Debian пакета (будет работать на Shared Runners)
+# Сборка Debian пакета
 build_linux_package:
   stage: build
   image: ubuntu:20.04
@@ -53,32 +51,22 @@ build_linux_package:
     - apt-get install -y curl dpkg-dev python3
   script:
     - echo "Building Debian package..."
-    
-    # Скачиваем файлы
     - curl -s -L -o main.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/main.py"
     - curl -s -L -o functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/functions.py"
     - curl -s -L -o icon.png "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/icon.png"
     - curl -s -L -o calculator.desktop "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/calculator.desktop"
-    
-    # Скачиваем DEBIAN файлы
     - mkdir -p DEBIAN
     - curl -s -L -o DEBIAN/control "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/installer_creation_linux_debian/DEBIAN/control"
     - curl -s -L -o DEBIAN/postinst "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/installer_creation_linux_debian/DEBIAN/postinst"
     - chmod +x DEBIAN/postinst
-    
-    # Создаем структуру пакета (упрощённо)
     - mkdir -p package/DEBIAN
     - mkdir -p package/opt/calculator
     - mkdir -p package/usr/local/bin
     - mkdir -p package/usr/share/applications
-    
-    # Копируем файлы
     - cp DEBIAN/control package/DEBIAN/
     - cp DEBIAN/postinst package/DEBIAN/
     - cp main.py functions.py icon.png package/opt/calculator/
     - cp calculator.desktop package/usr/share/applications/
-    
-    # Создаем запускаемый скрипт
     - |
       cat > package/usr/local/bin/calculator << 'EOF'
       #!/bin/bash
@@ -86,14 +74,9 @@ build_linux_package:
       python3 main.py
       EOF
     - chmod +x package/usr/local/bin/calculator
-    
-    # Устанавливаем права
     - chmod -R 755 package/opt/calculator
     - chmod 755 package/DEBIAN/postinst
-    
-    # Собираем пакет
     - dpkg-deb --build package calculator_${VERSION}_all.deb
-    
     - echo "Debian package created: calculator_${VERSION}_all.deb"
   artifacts:
     paths:
@@ -102,38 +85,54 @@ build_linux_package:
   only:
     - releases
 
-# Windows сборка
+# Сборка Windows установщика
 build_windows_installer:
   stage: build
   tags:
     - windows
   before_script:
-    # На Windows Shared Runners уже установлены:
-    # - Python
-    # - Chocolatey
-    # Нужно доустановить только необходимое
+    - choco install python -y
     - choco install innosetup -y
+    - refreshenv
+    - python --version
     - pip install pyinstaller
   script:
-    - echo "Building Windows installer on GitLab Windows Shared Runner..."
-    
-    # Скачиваем файлы
+    - echo "Building Windows installer..."
     - curl -s -L -o main.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/main.py"
-    - curl -s -L -o functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/functions.py" 
+    - curl -s -L -o functions.py "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/functions.py"
     - curl -s -L -o icon.ico "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/icon.ico"
-    
-    # Скачиваем скрипт установщика
     - curl -s -L -o installer.iss "https://raw.githubusercontent.com/KalimProjects/git-calculator/releases/installer_creation/installer.iss"
-    
-    # Сборка
-    - pyinstaller --onefile --windowed --icon="icon.ico" main.py functions.py
+    - echo "Fixing paths in installer script..."
+    - |
+      $content = Get-Content -Path "installer.iss" -Encoding UTF8
+      $content = $content -replace '#define OutputDir "\.\.\\installer"', '#define OutputDir "installer"'
+      $content = $content -replace '#define IconNameSource "\.\.\\icon\.ico"', '#define IconNameSource "icon.ico"'
+      $content = $content -replace 'Source: "{[^}]*}"', 'Source: "dist\main.exe"; DestName: "GitCalculator.exe"'
+      $content | Set-Content -Path "installer.iss" -Encoding UTF8
+    - echo "Building with PyInstaller..."
+    - pyinstaller --onefile --windowed --icon="icon.ico" --add-data="icon.ico;." main.py functions.py
+    - echo "Creating installer with Inno Setup..."
     - iscc installer.iss
-    
-    # Копируем результат
-    - copy "installer\GitCalculatorSetup.exe" "GitCalculatorSetup_1.2.exe"
+    - if (Test-Path "installer\GitCalculatorSetup.exe") { Copy-Item "installer\GitCalculatorSetup.exe" "GitCalculatorSetup_${env:VERSION}.exe" }
   artifacts:
     paths:
       - GitCalculatorSetup_*.exe
+      - installer/
     expire_in: 1 hour
+  only:
+    - releases
+
+# Финальный этап
+deploy_artifacts:
+  stage: build
+  image: alpine:latest
+  script:
+    - echo "All artifacts are available for download:"
+    - echo "- Windows: GitCalculatorSetup_${VERSION}.exe"
+    - echo "- Linux: calculator_${VERSION}_all.deb"
+    - echo "Pipeline completed successfully!"
+  dependencies:
+    - build_linux_package
+    - build_windows_installer
   only:
     - releases
