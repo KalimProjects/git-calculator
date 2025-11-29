@@ -69,10 +69,10 @@ build_linux_package:
     - chmod -R 755 package/opt/calculator
     - chmod 755 package/DEBIAN/postinst
     - dpkg-deb --build package calculator_1.2_all.deb
-    - echo "Debian package created: calculator_1.2_all.deb"
+    - echo "Debian package created"
   artifacts:
     paths:
-      - calculator_*.deb
+      - calculator_1.2_all.deb
     expire_in: 1 week
   only:
     - releases
@@ -105,8 +105,7 @@ build_windows_installer:
     - if (Test-Path "installer\GitCalculatorSetup.exe") { Copy-Item "installer\GitCalculatorSetup.exe" "GitCalculatorSetup_1.2.exe" }
   artifacts:
     paths:
-      - GitCalculatorSetup_*.exe
-      - installer/
+      - GitCalculatorSetup_1.2.exe
     expire_in: 1 week
   only:
     - releases
@@ -116,9 +115,7 @@ deploy_artifacts:
   stage: build
   image: alpine:latest
   script:
-    - echo "All artifacts are available for download:"
-    - echo "- Windows: GitCalculatorSetup_1.2.exe"
-    - echo "- Linux: calculator_1.2_all.deb"
+    - echo "All artifacts are available for download"
     - echo "Pipeline completed successfully!"
   dependencies:
     - build_linux_package
